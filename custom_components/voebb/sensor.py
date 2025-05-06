@@ -13,9 +13,19 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
+import logging
 import time
 
-from .const import URL, DEFAULT_ICON
+from .const import (
+    URL,
+    DEFAULT_ICON,
+    CONF_SELENIUM_HOST,
+    CONF_SELENIUM_PORT,
+    DOMAIN,  # noqa
+    SCAN_INTERVAL,  # noqa
+)
+
+_LOGGER = logging.getLogger(__package__)
 
 
 @dataclass
@@ -81,6 +91,8 @@ class VOEBBSensor(SensorEntity):
         self.config: dict = config
         self.username: str = config.get(CONF_USERNAME)
         self.password: str = config.get(CONF_PASSWORD)
+        self.selenium_host: str = config.get(CONF_SELENIUM_HOST)
+        self.selenium_port: str = config.get(CONF_SELENIUM_PORT)
         self.books: list[Book] = []
 
     @property
@@ -93,6 +105,7 @@ class VOEBBSensor(SensorEntity):
 
     @property
     def state(self) -> str:
+        _LOGGER.debug(f"{DOMAIN} - state() called")
         next_book = self.next_book()
         if next_book:
             return f"Next Book to return: {next_book.title} at {next_book.expiry}"
@@ -106,16 +119,21 @@ class VOEBBSensor(SensorEntity):
     def icon(self) -> str:
         return DEFAULT_ICON
 
-    def update(self):
+    def update(self) -> None:
+        _LOGGER.debug(f"{DOMAIN} - update() called")
         self.books = self.fetch_books()
 
     def fetch_books(self) -> list[Book]:
+        _LOGGER.debug(f"{DOMAIN} - fetch_books() called")
         books = []
 
         options = webdriver.ChromeOptions()
         options.add_argument("--headless=new")
         options.add_argument("--window-size=1920,1080")
-        driver = webdriver.Chrome(options=options)
+        url = f"http://{self.selenium_host}:{self.selenium_port}/wd/hub"
+        _LOGGER.debug(f"{DOMAIN} - fetch_books: Connecting to {url}")
+
+        driver = webdriver.Remote(command_executor=url, options=options)
         driver.get(URL)
         driver.implicitly_wait(2)
         login_button = driver.find_element(by=By.NAME, value="SUO1_AUTHFU_1")
@@ -127,6 +145,15 @@ class VOEBBSensor(SensorEntity):
         password_box.send_keys(self.password)
         login_button = driver.find_element(by=By.NAME, value="LLOGIN")
         login_button.click()
+
+        try:
+            login_button = driver.find_element(by=By.NAME, value="SUO1_AUTHFU_1")
+        except NoSuchElementException:
+            _LOGGER.debug(f"{DOMAIN} - Auth failed")
+            driver.quit()
+            raise InvalidAuth
+
+        _LOGGER.debug(f"{DOMAIN} - Auth succeeded")
         account_link = driver.find_element(
             by=By.XPATH, value="//a[@title='Mein Konto']"
         )
@@ -135,6 +162,8 @@ class VOEBBSensor(SensorEntity):
         borrow_link.click()
         rows = len(driver.find_elements(By.XPATH, '//*[@id="resptable-1"]/tbody/tr'))
 
+        _LOGGER.debug(f"{DOMAIN} - {rows} items fetched")
+
         for r in range(1, rows + 1):
             title = driver.find_element(
                 by=By.XPATH, value=f'//*[@id="resptable-1"]/tbody/tr[{r}]/td[4]'
@@ -142,6 +171,7 @@ class VOEBBSensor(SensorEntity):
 
             title, author = title.split(" / ", 1)
             author, metadata = author.split("\n", 1)
+            _LOGGER.debug(f"{DOMAIN} - {title} / {author} fetched")
             books.append(
                 Book(
                     expiry=driver.find_element(
@@ -159,9 +189,11 @@ class VOEBBSensor(SensorEntity):
                 )
             )
 
-        return books.sort()
+        driver.quit()
+        return books
 
     def next_book(self):
+        _LOGGER.debug(f"{DOMAIN} - next_book() called")
         if self.books and isinstance(self.books, list):
             return self.books[0]
         return None

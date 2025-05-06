@@ -16,15 +16,23 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 
+import logging
 import time
 
-from .const import DOMAIN, URL
+from .const import (
+    DOMAIN,
+    URL,
+    CONF_SELENIUM_HOST,
+    CONF_SELENIUM_PORT,
+    CONF_SELENIUM_DEFAULT_PORT,
+)
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__package__)
 
-# TODO adjust the data schema to the data that you need
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
+        vol.Required(CONF_SELENIUM_HOST): str,
+        vol.Required(CONF_SELENIUM_PORT, default=CONF_SELENIUM_DEFAULT_PORT): str,
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
     }
@@ -32,13 +40,12 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
-    """Validate the user input allows us to connect.
+    """Validate the user input allows us to connect."""
 
-    Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
-    """
+    url = f"http://{data[CONF_SELENIUM_HOST]}:{data[CONF_SELENIUM_PORT]}/wd/hub"
 
     if not await hass.async_add_executor_job(
-        test_login, data[CONF_USERNAME], data[CONF_PASSWORD]
+        test_login, data[CONF_USERNAME], data[CONF_PASSWORD], url
     ):
         raise InvalidAuth
 
@@ -46,11 +53,13 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     return {"title": f"VOEBB {data[CONF_USERNAME]}"}
 
 
-def test_login(username: str, password: str):
+def test_login(username: str, password: str, url: str):
     options = webdriver.ChromeOptions()
     options.add_argument("--headless=new")
     options.add_argument("--window-size=1920,1080")
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Remote(command_executor=f"{url}", options=options)
+    _LOGGER.debug(f"Connecting to {url}")
+
     driver.get(URL)
     driver.implicitly_wait(2)
     login_button = driver.find_element(by=By.NAME, value="SUO1_AUTHFU_1")
@@ -66,10 +75,13 @@ def test_login(username: str, password: str):
     try:
         login_button = driver.find_element(by=By.NAME, value="SUO1_AUTHFU_1")
     except NoSuchElementException:
+        driver.quit()
         return False
 
     if not login_button.get_attribute("value") == "Abmelden":
+        driver.quit()
         return False
+    driver.quit()
     return True
 
 

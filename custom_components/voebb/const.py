@@ -4,8 +4,12 @@ from datetime import timedelta
 
 DOMAIN = "voebb"
 
-SCAN_INTERVAL = timedelta(seconds=900)
+SCAN_INTERVAL = timedelta(seconds=30)
 
 URL = "https://www.voebb.de/aDISWeb/app?service=direct/0/Home/$DirectLink&sp=SPROD00"
 
-DEFAULT_ICON ="mdi:library"
+DEFAULT_ICON = "mdi:library"
+
+CONF_SELENIUM_HOST = "Hostname of remote selenium webserver"
+CONF_SELENIUM_PORT = "Port to remote selenium webdriver"
+default = CONF_SELENIUM_DEFAULT_PORT = "4444"
