@@ -1,0 +1,15 @@
+{
+    "domain": "voebb",
+    "name": "Custom component for lent media from VOEBB (Verbund der Öffentlichen Bibliotheken Berlins)",
+    "codeowners": ["@mrueg"],
+    "config_flow": true,
+    "dependencies": [],
+    "documentation": "https://github.com/mrueg/ha-voebb",
+    "homekit": {},
+    "iot_class": "cloud_polling",
+    "quality_scale": "bronze",
+    "requirements": ["selenium"],
+    "ssdp": [],
+    "version": "0.1.0",
+    "zeroconf": []
+}
