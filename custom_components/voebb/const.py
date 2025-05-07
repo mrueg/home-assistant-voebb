@@ -4,7 +4,7 @@ from datetime import timedelta
 
 DOMAIN = "voebb"
 
-SCAN_INTERVAL = timedelta(seconds=30)
+SCAN_INTERVAL = timedelta(minutes=60)
 
 URL = "https://www.voebb.de/aDISWeb/app?service=direct/0/Home/$DirectLink&sp=SPROD00"
 
