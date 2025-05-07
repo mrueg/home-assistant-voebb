@@ -29,7 +29,7 @@ _LOGGER = logging.getLogger(__package__)
 
 
 @dataclass
-class Book:
+class Item:
     title: str
     author: str
     library: str
@@ -93,7 +93,7 @@ class VOEBBSensor(SensorEntity):
         self.password: str = config.get(CONF_PASSWORD)
         self.selenium_host: str = config.get(CONF_SELENIUM_HOST)
         self.selenium_port: str = config.get(CONF_SELENIUM_PORT)
-        self.books: list[Book] = []
+        self.items: list[Item] = []
 
     @property
     def name(self) -> str:
@@ -106,14 +106,14 @@ class VOEBBSensor(SensorEntity):
     @property
     def state(self) -> str:
         _LOGGER.debug(f"{DOMAIN} - state() called")
-        next_book = self.next_book()
-        if next_book:
-            return f"Next Book to return: {next_book.title} at {next_book.expiry}"
+        next_item = self.next_item()
+        if next_item:
+            return f"Next item to return: {next_item.title} at {next_item.expiry}"
         return "N/A"
 
     @property
     def extra_state_attributes(self):
-        return {"books": [book.to_dict() for book in self.books or []]}
+        return {"items": [item.to_dict() for item in self.items or []]}
 
     @property
     def icon(self) -> str:
@@ -121,17 +121,17 @@ class VOEBBSensor(SensorEntity):
 
     def update(self) -> None:
         _LOGGER.debug(f"{DOMAIN} - update() called")
-        self.books = self.fetch_books()
+        self.items = self.fetch_items()
 
-    def fetch_books(self) -> list[Book]:
-        _LOGGER.debug(f"{DOMAIN} - fetch_books() called")
-        books = []
+    def fetch_items(self) -> list[Item]:
+        _LOGGER.debug(f"{DOMAIN} - fetch_items() called")
+        items = []
 
         options = webdriver.ChromeOptions()
         options.add_argument("--headless=new")
         options.add_argument("--window-size=1920,1080")
         url = f"http://{self.selenium_host}:{self.selenium_port}/wd/hub"
-        _LOGGER.debug(f"{DOMAIN} - fetch_books: Connecting to {url}")
+        _LOGGER.debug(f"{DOMAIN} - fetch_items: Connecting to {url}")
 
         driver = webdriver.Remote(command_executor=url, options=options)
         driver.get(URL)
@@ -172,8 +172,8 @@ class VOEBBSensor(SensorEntity):
             title, author = title.split(" / ", 1)
             author, metadata = author.split("\n", 1)
             _LOGGER.debug(f"{DOMAIN} - {title} / {author} fetched")
-            books.append(
-                Book(
+            items.append(
+                Item(
                     expiry=driver.find_element(
                         by=By.XPATH, value=f'//*[@id="resptable-1"]/tbody/tr[{r}]/td[2]'
                     ).text,
@@ -190,10 +190,10 @@ class VOEBBSensor(SensorEntity):
             )
 
         driver.quit()
-        return books
+        return items
 
-    def next_book(self):
-        _LOGGER.debug(f"{DOMAIN} - next_book() called")
-        if self.books and isinstance(self.books, list):
-            return self.books[0]
+    def next_item(self):
+        _LOGGER.debug(f"{DOMAIN} - next_item() called")
+        if self.items and isinstance(self.items, list):
+            return self.items[0]
         return None

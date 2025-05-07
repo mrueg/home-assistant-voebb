@@ -12,3 +12,23 @@ Display lent media from VOEBB (Verbund der Öffentlichen Bibliotheken Berlins) i
 * Run a [standalone-chromium](https://github.com/mrueg/addon-standalone-chromium) or similar to allow the integration to connect to.
 * If you run this addon, copy the container name when it is started and enter it as the URL: `http://container-name-493922a:4444`
 * Add your username and password from the library.
+
+
+# Display
+
+You can visualize the media you borrowed using the [flex-table-card](https://github.com/custom-cards/flex-table-card) lovelace card.
+
+```
+type: custom:flex-table-card
+entities:
+  include: sensor.voebb.*
+columns:
+  - name: Return til
+    data: books.expiry
+  - name: Title
+    data: books.title
+  - name: Author
+    data: books.author
+  - name: Extension
+    data: books.extension
+```
