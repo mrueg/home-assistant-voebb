@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant
 
@@ -91,6 +91,7 @@ class VOEBBSensor(SensorEntity):
         self.selenium_host: str = config.get(CONF_SELENIUM_HOST)
         self.selenium_port: str = config.get(CONF_SELENIUM_PORT)
         self.items: list[Item] = []
+        self._last_updated: datetime
 
     @property
     def name(self) -> str:
@@ -118,7 +119,18 @@ class VOEBBSensor(SensorEntity):
 
     def update(self) -> None:
         _LOGGER.debug(f"{DOMAIN} - update() called")
-        self.items = self.fetch_items()
+        # We don't want to hammer the website if we have items and updated once
+        if (
+            self.items
+            and self._last_updated
+            and (datetime.now() - self._last_updated) < timedelta(hours=6)
+        ):
+            _LOGGER.debug(
+                f"Last update was on {self._last_updated} - skipping for 6 hours"
+            )
+        else:
+            self.items = self.fetch_items()
+            self._last_updated = datetime.now()
 
     def fetch_items(self) -> list[Item]:
         _LOGGER.debug(f"{DOMAIN} - fetch_items() called")
