@@ -1,17 +1,11 @@
 # home-assistant-voebb
 Display lent media from VOEBB (Verbund der Öffentlichen Bibliotheken Berlins) in Home-Assistant.
 
-
-# Current status
-
-> [!WARNING]
-> This is work in progress and untested.
-
 # How to use
 
-* Run a [standalone-chromium](https://github.com/mrueg/addon-standalone-chromium) or similar to allow the integration to connect to.
-* If you run this addon, copy the container name when it is started and enter it as the URL: `http://container-name-493922a:4444`
-* Add your username and password from the library.
+- Run a [standalone-chromium](https://github.com/mrueg/addon-standalone-chromium) or similar to allow the integration to connect to the Selenium Webdriver.
+- If you run this addon, copy the container name when it is started and enter its container name in the config flow.
+- Add your username and password from the library.
 
 
 # Display
@@ -24,13 +18,13 @@ entities:
   include: sensor.voebb.*
 columns:
   - name: Return until
-    data: books.return_date
+    data: items.return_date
   - name: Title
-    data: books.title
+    data: items.title
   - name: Author
-    data: books.author
+    data: items.author
   - name: Extension
-    data: books.extension
+    data: items.extension
 ```
 
 and this is how it will look like:
