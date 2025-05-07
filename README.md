@@ -23,8 +23,8 @@ type: custom:flex-table-card
 entities:
   include: sensor.voebb.*
 columns:
-  - name: Return til
-    data: books.expiry
+  - name: Return until
+    data: books.return_date
   - name: Title
     data: books.title
   - name: Author
@@ -32,3 +32,7 @@ columns:
   - name: Extension
     data: books.extension
 ```
+
+and this is how it will look like:
+
+![Screenshot of the view in Home-Assistant](table.png)

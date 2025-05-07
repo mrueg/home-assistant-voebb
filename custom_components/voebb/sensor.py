@@ -34,19 +34,19 @@ class Item:
     author: str
     library: str
     metadata: str
-    expiry: datetime
+    return_date: datetime
     extension: str
 
     @classmethod
     def from_dict(cls, source):
-        timestamp = datetime.fromisoformat(source.get("expiry"))
+        timestamp = datetime.fromisoformat(source.get("return_date"))
 
         return cls(
             title=source["title"],
             author=source["author"],
             library=source["library"],
             metadata=source["metadata"],
-            expiry=timestamp.strftime("%Y-%m-%d"),
+            return_date=timestamp.strftime("%Y-%m-%d"),
             extension=source["extension"],
         )
 
@@ -56,15 +56,12 @@ class Item:
             "author": self.author,
             "library": self.library,
             "metadata": self.metadata,
-            "expiry": self.expiry,
+            "return_date": self.return_date,
             "extension": self.extension,
         }
 
     def __hash__(self):
         return hash(tuple(sorted(self.to_dict().items())))
-
-    def __lt__(self, other):
-        return self.expiry < other.expiry
 
 
 async def async_setup_platform(
@@ -108,7 +105,7 @@ class VOEBBSensor(SensorEntity):
         _LOGGER.debug(f"{DOMAIN} - state() called")
         next_item = self.next_item()
         if next_item:
-            return f"Next item to return: {next_item.title} at {next_item.expiry}"
+            return f"Next item to return: {next_item.title} at {next_item.return_date}"
         return "N/A"
 
     @property
@@ -174,7 +171,7 @@ class VOEBBSensor(SensorEntity):
             _LOGGER.debug(f"{DOMAIN} - {title} / {author} fetched")
             items.append(
                 Item(
-                    expiry=driver.find_element(
+                    return_date=driver.find_element(
                         by=By.XPATH, value=f'//*[@id="resptable-1"]/tbody/tr[{r}]/td[2]'
                     ).text,
                     library=driver.find_element(
