@@ -17,12 +17,14 @@ type: custom:flex-table-card
 entities:
   include: sensor.voebb.*
 columns:
-  - name: Return until
+  - name: Return date
     data: items.return_date
   - name: Title
     data: items.title
   - name: Author
     data: items.author
+  - name: Location
+    data: items.library
   - name: Extension
     data: items.extension
 ```
