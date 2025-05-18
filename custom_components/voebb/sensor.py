@@ -148,6 +148,8 @@ class VOEBBSensor(SensorEntity):
         login_button = driver.find_element(by=By.NAME, value="SUO1_AUTHFU_1")
         login_button.click()
 
+        _LOGGER.debug(f"{DOMAIN} - fetch_items: Navigating to login page")
+
         username_box = driver.find_element(by=By.ID, value="L#AUSW")
         username_box.send_keys(self.username)
         password_box = driver.find_element(by=By.ID, value="LPASSW")
@@ -158,29 +160,41 @@ class VOEBBSensor(SensorEntity):
         try:
             login_button = driver.find_element(by=By.NAME, value="SUO1_AUTHFU_1")
         except NoSuchElementException:
-            _LOGGER.debug(f"{DOMAIN} - Auth failed")
+            _LOGGER.debug(f"{DOMAIN} - fetch_items: Auth failed")
             driver.quit()
             raise InvalidAuth
 
-        _LOGGER.debug(f"{DOMAIN} - Auth succeeded")
+        _LOGGER.debug(f"{DOMAIN} - fetch_items: Auth succeeded")
         account_link = driver.find_element(
             by=By.XPATH, value="//a[@title='Mein Konto']"
         )
         account_link.click()
-        borrow_link = driver.find_element(by=By.LINK_TEXT, value="11 Ausleihen")
+        borrow_link = driver.find_element(by=By.PARTIAL_LINK_TEXT, value="Ausleihen")
         borrow_link.click()
+        _LOGGER.debug(f"{DOMAIN} - fetch_items: Selected Ausleihen")
+
         rows = len(driver.find_elements(By.XPATH, '//*[@id="resptable-1"]/tbody/tr'))
 
-        _LOGGER.debug(f"{DOMAIN} - {rows} items fetched")
+        _LOGGER.debug(f"{DOMAIN} - fetch_items: {rows} items fetched")
 
         for r in range(1, rows + 1):
             title = driver.find_element(
                 by=By.XPATH, value=f'//*[@id="resptable-1"]/tbody/tr[{r}]/td[4]'
             ).text
 
-            title, author = title.split(" / ", 1)
-            author, metadata = author.split("\n", 1)
-            _LOGGER.debug(f"{DOMAIN} - {title} / {author} fetched")
+            metadata = ""
+            author = ""
+            if " / " in title:
+                title, author = title.split(" / ", 1)
+                if "\n" in author:
+                    author, metadata = author.split("\n", 1)
+            else:
+                if "\n" in title:
+                    title, metadata = title.split("\n", 1)
+
+            _LOGGER.debug(
+                f"{DOMAIN} - fetch_items: {title} # {author} # {metadata} fetched"
+            )
             items.append(
                 Item(
                     return_date=driver.find_element(
