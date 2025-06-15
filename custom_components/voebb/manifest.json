@@ -4,7 +4,7 @@
     "codeowners": ["@mrueg"],
     "config_flow": true,
     "dependencies": [],
-    "documentation": "https://github.com/mrueg/ha-voebb",
+    "documentation": "https://github.com/mrueg/home-assistant-voebb",
     "homekit": {},
     "iot_class": "cloud_polling",
     "quality_scale": "bronze",
