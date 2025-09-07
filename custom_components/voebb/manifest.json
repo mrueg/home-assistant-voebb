@@ -8,7 +8,7 @@
     "homekit": {},
     "iot_class": "cloud_polling",
     "quality_scale": "bronze",
-    "requirements": ["selenium==4.35.0", "requests"],
+    "requirements": ["selenium>=4.34.0", "requests"],
     "ssdp": [],
     "version": "0.1.0",
     "zeroconf": []
