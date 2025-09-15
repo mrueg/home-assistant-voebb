@@ -171,12 +171,18 @@ class VOEBBSensor(SensorEntity):
             by=By.XPATH, value="//a[@title='Mein Konto']"
         )
         account_link.click()
+
         try:
-            borrow_link = driver.find_element(by=By.PARTIAL_LINK_TEXT, value="Ausleihen")
-        except NoSuchElementException:
-            _LOGGER.debug(f"{DOMAIN} - fetch_items: Fetching Ausleihen failed")
+            borrow_link = driver.find_element(by=By.PARTIAL_LINK_TEXT, value="Keine Ausleihen")
             driver.quit()
-            raise FailedFetchingAusleihen
+            return []
+        except NoSuchElementException:
+            try:
+                borrow_link = driver.find_element(by=By.PARTIAL_LINK_TEXT, value="Ausleihen")
+            except NoSuchElementException:
+                _LOGGER.debug(f"{DOMAIN} - fetch_items: Fetching Ausleihen failed")
+                driver.quit()
+                raise FailedFetchingAusleihen
 
         borrow_link.click()
         _LOGGER.debug(f"{DOMAIN} - fetch_items: Selected Ausleihen")
@@ -225,6 +231,6 @@ class VOEBBSensor(SensorEntity):
 
     def next_item(self):
         _LOGGER.debug(f"{DOMAIN} - next_item() called")
-        if self.items and isinstance(self.items, list):
+        if self.items and isinstance(self.items, list) and len(self.items) > 0:
             return self.items[0]
         return None
