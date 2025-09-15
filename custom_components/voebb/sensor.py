@@ -137,7 +137,6 @@ class VOEBBSensor(SensorEntity):
         items = []
 
         options = webdriver.ChromeOptions()
-        options.add_argument("--headless")
         options.add_argument("--window-size=1920,1080")
         url = f"http://{self.selenium_host}:{self.selenium_port}/wd/hub"
         _LOGGER.debug(f"{DOMAIN} - fetch_items: Connecting to {url}")

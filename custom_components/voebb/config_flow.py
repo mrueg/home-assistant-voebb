@@ -55,7 +55,6 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
 def test_login(username: str, password: str, url: str):
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
     options.add_argument("--window-size=1920,1080")
     driver = webdriver.Remote(command_executor=f"{url}", options=options)
     _LOGGER.debug(f"Connecting to {url}")
