@@ -1,14 +1,13 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant
-
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
-
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
