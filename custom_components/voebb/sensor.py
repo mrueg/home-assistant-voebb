@@ -28,6 +28,10 @@ from .const import (
 _LOGGER = logging.getLogger(__package__)
 
 
+class FailedFetchingAusleihen(HomeAssistantError):
+    """Error to indicate there is an issue failed to fetch the Ausleihen page."""
+
+
 @dataclass
 class Item:
     title: str
@@ -168,7 +172,13 @@ class VOEBBSensor(SensorEntity):
             by=By.XPATH, value="//a[@title='Mein Konto']"
         )
         account_link.click()
-        borrow_link = driver.find_element(by=By.PARTIAL_LINK_TEXT, value="Ausleihen")
+        try:
+            borrow_link = driver.find_element(by=By.PARTIAL_LINK_TEXT, value="Ausleihen")
+        except NoSuchElementException:
+            _LOGGER.debug(f"{DOMAIN} - fetch_items: Fetching Ausleihen failed")
+            driver.quit()
+            raise FailedFetchingAusleihen
+
         borrow_link.click()
         _LOGGER.debug(f"{DOMAIN} - fetch_items: Selected Ausleihen")
 
