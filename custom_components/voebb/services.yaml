@@ -1,0 +1,16 @@
+renew:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: voebb
+    barcodes:
+      example: "00000000013"
+      selector:
+        text:
+          multiple: true
+    check_only:
+      default: false
+      selector:
+        boolean:

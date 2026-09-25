@@ -1,0 +1,125 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "data": {
+                    "username": "Ausweisnummer",
+                    "password": "Passwort"
+                },
+                "data_description": {
+                    "username": "Die Nummer auf Ihrem Bibliotheksausweis.",
+                    "password": "Das Passwort, mit dem Sie sich auf voebb.de anmelden."
+                }
+            },
+            "reauth_confirm": {
+                "title": "Authentifizierung abgelaufen",
+                "description": "Das Passwort für den Bibliotheksausweis {username} wurde abgelehnt. Bitte geben Sie das aktuelle Passwort ein.",
+                "data": {
+                    "password": "Passwort"
+                },
+                "data_description": {
+                    "password": "Das Passwort, mit dem Sie sich auf voebb.de anmelden."
+                }
+            },
+            "reconfigure": {
+                "description": "Ändern Sie das Passwort Ihres Bibliotheksausweises. Für einen anderen Bibliotheksausweis fügen Sie die Integration erneut hinzu.",
+                "data": {
+                    "username": "Ausweisnummer",
+                    "password": "Passwort"
+                },
+                "data_description": {
+                    "username": "Die Nummer auf Ihrem Bibliotheksausweis.",
+                    "password": "Das Passwort, mit dem Sie sich auf voebb.de anmelden."
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Verbindung fehlgeschlagen",
+            "invalid_auth": "Ungültige Anmeldedaten",
+            "unknown": "Unerwarteter Fehler"
+        },
+        "abort": {
+            "already_configured": "Konto wurde bereits eingerichtet",
+            "reauth_successful": "Die erneute Authentifizierung war erfolgreich",
+            "reconfigure_successful": "Die Neukonfiguration war erfolgreich",
+            "wrong_account": "Das ist ein anderer Bibliotheksausweis. Fügen Sie ihn stattdessen als neue Integration hinzu."
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "overdue": {
+                "name": "Überfällig"
+            }
+        },
+        "calendar": {
+            "return_dates": {
+                "name": "Rückgabetermine"
+            }
+        },
+        "sensor": {
+            "borrowed_items": {
+                "name": "Ausleihen"
+            },
+            "next_return_date": {
+                "name": "Nächster Rückgabetermin"
+            },
+            "ready_for_pickup": {
+                "name": "Zur Abholung bereit",
+                "state_attributes": {
+                    "pickup_code": {
+                        "name": "Abholcode"
+                    }
+                }
+            },
+            "card_valid_until": {
+                "name": "Ausweis gültig bis"
+            },
+            "reservations": {
+                "name": "Vormerkungen"
+            },
+            "orders": {
+                "name": "Bestellungen aus dem Magazin"
+            }
+        }
+    },
+    "exceptions": {
+        "invalid_auth": {
+            "message": "VÖBB hat die Anmeldung abgelehnt: {error}"
+        },
+        "update_failed": {
+            "message": "Abrufen der Ausleihen vom VÖBB fehlgeschlagen: {error}"
+        },
+        "entry_not_found": {
+            "message": "Der Bibliotheksausweis wurde nicht gefunden."
+        },
+        "entry_not_loaded": {
+            "message": "Der Bibliotheksausweis ist nicht geladen."
+        },
+        "unknown_item": {
+            "message": "Diese Medien sind nicht ausgeliehen: {barcodes}"
+        },
+        "renew_failed": {
+            "message": "Verlängern beim VÖBB fehlgeschlagen: {error}"
+        }
+    },
+    "services": {
+        "renew": {
+            "name": "Verlängern",
+            "description": "Verlängert ausgeliehene Medien. Gibt für jedes Medium zurück, ob es verlängert wurde, und den Hinweis des VÖBB.",
+            "fields": {
+                "config_entry_id": {
+                    "name": "Bibliotheksausweis",
+                    "description": "Der Bibliotheksausweis, dessen Medien verlängert werden."
+                },
+                "barcodes": {
+                    "name": "Barcodes",
+                    "description": "Barcodes der zu verlängernden Medien, siehe das Attribut items des Sensors Ausleihen. Leer lassen, um alle Medien zu verlängern."
+                },
+                "check_only": {
+                    "name": "Nur prüfen",
+                    "description": "Nur prüfen, ob die Medien verlängert werden können, ohne sie zu verlängern."
+                }
+            }
+        }
+    }
+}

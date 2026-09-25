@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<title>Anmeldung</title>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta charset="utf-8" />
+<meta name="keywords" content="OPAC, Bibliothekssoftware" />
+<meta name="description" content="Hinweis zum Bibliothekskatalog" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,shrink-to-fit=no" />
+<meta http-equiv="expires" content="0" />
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="pragma" content="no-cache" />
+<meta name="robots" content="noindex,nofollow" />
+<link rel="stylesheet" href="css/openid.css" type="text/css"></link>
+<link rel="shortcut icon" type="image/x-icon" href="images/favicon.ico"></link>
+</head>
+<body class="opac01">
+	<div class="aDISMaske">
+		<div id="wrapper">
+			<div id="wrapper_inside">
+				<header id="header">
+					<div id="mhead" class="block">
+						<div id="mhead-inside">
+							<div id="logo" role="banner">
+								<div>
+						    		<a href="https://www.voebb.de/aDISWeb/app?service=direct/0/Home/$DirectLink&amp;sp=SPROD00" title="Zur Startseite" aria-label="Zur Startseite">
+						        		<img src="images/VOEBB-Logo.png" alt="Logo" class="img-standard"/>
+						    		</a>
+								</div>
+                         		
+							</div>
+							<div id="slogan-wrapper">
+								<div id="spruch">
+									<span>Anmeldung</span>
+								</div>
+								<div id="slogan">Wir bringen Medien in Bewegung</div>
+							</div>
+						</div>
+					</div>
+				</header>
+				<div id="container">
+					<div id="container-inside">
+						<div id="main" role="main">
+							<div class="inside">
+								<div class="grid-wrapper">
+									<div class="grid-row">
+										<div class="grid-col col-12">
+											<div class="grid-inside">
+												<!--  START TEXT  -->
+												<h1>Anmeldung</h1>
+												<p>Melden Sie sich mit Ihrem Bibliotheksausweis an.</p>
+												<form class="standalone" action="logincheck" method="post" accept-charset="UTF-8" autocomplete="off">
+													<div class="form-primary">
+														<div class="form-primary-inside">
+															
+                                                            
+															<div class="widget">
+																<label for="L#AUSW">Ausweisnummer:</label>
+																<input type="text" name="L#AUSW" id="L#AUSW" class="onlyNumbers" />
+															</div>
+															<div class="widget">
+																<label for="LPASSW">Passwort:</label>
+																<input type="password" name="LPASSW" id="LPASSW" />
+                                                                <button type="button" id="show-password" class="button-link" title="Zeige Passwort an"></button>
+															</div>
+															<div class="widget-submit block">
+																<input type="submit" name="LLOGIN" value="Anmelden" class="imp-button anmelden" />
+																<input type="submit" name="LCANCL" id="btnCancel" value="Abbrechen" class="abbrechen" />
+															</div>
+															<div class="widget-submit block">
+																<input type="submit" name="LACTIONPW" value="Passwort vergessen?" class="button-link passwort-vergessen" />
+																<input type="submit" name="LACTIONNM" value="Ausweis erstellen" class="button-link registrieren" />
+															</div>
+														</div>
+													</div>
+												</form>
+<script type="text/javascript">
+window.addEventListener('pagehide', () => {
+ document.querySelector('form.standalone').reset();
+});
+</script>
+												<!--  STOP TEXT  -->
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					</div>
+				
+				</div>
+				<footer id="footer">
+					<div class="inside">
+						<div class="grid-wrapper">
+							<div class="grid-row">
+								<div id="fnav-logo" class="grid-col col-12 col-sm-2 col-md-5 col-lg-3">
+									<img src="images/VOEBB-Logo-Footer.svg" width="157" height="218" alt="V&Ouml;BB Logo" />
+								</div>
+								<div id="legal" class="grid-col col-12 col-sm-10 col-md-7 col-lg-9">
+									<nav class="mod_navigation block" aria-label="Men&uuml;: &Uuml;bersicht, Nutzungsbedingungen und sonstige rechtliche Hinweise">
+										<ul>
+											<li>
+												<a href="https://www.voebb.de/aDISWeb_vob/pages/datenschutz.html">Datenschutz</a>
+											</li>
+											<li>
+												<a href="https://www.voebb.de/aDISWeb_vob/impressum.html">Impressum</a>
+											</li>
+										</ul>
+									</nav>
+								</div>
+								<div class="grid-col col-12 offset-md-5 col-md-5">
+									<p id="credits">
+										&copy; Verbund der &Ouml;ffentlichen Bibliotheken Berlins<br /> <a href="https://www.astec.de" target="_blank">Barrierefreie Bibliothekssoftware der aStec angewandte Systemtechnik</a>
+									</p>
+								</div>
+							</div>
+						</div>
+						<div class="clear"></div>
+					</div>
+				</footer>
+			</div>
+		</div>
+	</div>
+    <script>
+	    document.addEventListener('DOMContentLoaded', function () {
+	        let btn = document.querySelector('#show-password');
+	        ["mousedown", "touchstart"].forEach((event) => {
+	            btn.addEventListener(event, function () {
+	                document.getElementById("LPASSW").type = "text";
+	            })
+	        });
+	        ["mouseup", "touchend"].forEach((event) => {
+	            btn.addEventListener(event, function () {
+	                document.getElementById("LPASSW").type = "password";
+	            })
+	        });
+	    });
+    </script>
+	
+</body>
+</html>

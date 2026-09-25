@@ -2,89 +2,52 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import logging
 from typing import Any
 
-import voluptuous as vol
-
+import aiohttp
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
+import voluptuous as vol
 
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException
-
-import logging
-import time
-
-from .const import (
-    DOMAIN,
-    URL,
-    CONF_SELENIUM_HOST,
-    CONF_SELENIUM_PORT,
-    CONF_SELENIUM_DEFAULT_PORT,
-)
+from .api import CannotConnect, InvalidAuth, VoebbClient
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__package__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_SELENIUM_HOST): str,
-        vol.Required(CONF_SELENIUM_PORT, default=CONF_SELENIUM_DEFAULT_PORT): str,
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
     }
 )
 
-
-async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
-    """Validate the user input allows us to connect."""
-
-    url = f"http://{data[CONF_SELENIUM_HOST]}:{data[CONF_SELENIUM_PORT]}/wd/hub"
-
-    if not await hass.async_add_executor_job(
-        test_login, data[CONF_USERNAME], data[CONF_PASSWORD], url
-    ):
-        raise InvalidAuth
-
-    # Return info that you want to store in the config entry.
-    return {"title": f"VOEBB {data[CONF_USERNAME]}"}
+STEP_REAUTH_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_PASSWORD): str,
+    }
+)
 
 
-def test_login(username: str, password: str, url: str):
-    options = webdriver.ChromeOptions()
-    options.add_argument("--window-size=1920,1080")
-    driver = webdriver.Remote(command_executor=f"{url}", options=options)
-    _LOGGER.debug(f"Connecting to {url}")
-
-    driver.get(URL)
-    driver.implicitly_wait(2)
-    login_button = driver.find_element(by=By.NAME, value="SUO1_AUTHFU_1")
-    login_button.click()
-
-    username_box = driver.find_element(by=By.ID, value="L#AUSW")
-    username_box.send_keys(username)
-    password_box = driver.find_element(by=By.ID, value="LPASSW")
-    password_box.send_keys(password)
-    login_button = driver.find_element(by=By.NAME, value="LLOGIN")
-    login_button.click()
-
+async def _async_validate(data: dict[str, Any]) -> dict[str, str]:
+    """Log in with the user input and return form errors."""
     try:
-        login_button = driver.find_element(by=By.NAME, value="SUO1_AUTHFU_1")
-    except NoSuchElementException:
-        driver.quit()
-        return False
+        # A fresh session keeps the aDISWeb cookies separate per login
+        async with aiohttp.ClientSession() as session:
+            client = VoebbClient(session, data[CONF_USERNAME], data[CONF_PASSWORD])
+            await client.async_logout(await client.async_login())
+    except CannotConnect:
+        return {"base": "cannot_connect"}
+    except InvalidAuth:
+        return {"base": "invalid_auth"}
+    except Exception:
+        _LOGGER.exception("Unexpected exception")
+        return {"base": "unknown"}
+    return {}
 
-    if not login_button.get_attribute("value") == "Abmelden":
-        driver.quit()
-        return False
-    driver.quit()
-    return True
 
-
-class ConfigFlow(ConfigFlow, domain=DOMAIN):
+class VoebbConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for voebb."""
 
     VERSION = 1
@@ -95,20 +58,69 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            try:
-                info = await validate_input(self.hass, user_input)
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
-            except Exception:
-                _LOGGER.exception("Unexpected exception")
-                errors["base"] = "unknown"
-            else:
-                return self.async_create_entry(title=info["title"], data=user_input)
+            await self.async_set_unique_id(user_input[CONF_USERNAME])
+            self._abort_if_unique_id_configured()
+
+            errors = await _async_validate(user_input)
+            if not errors:
+                # Don't show the full card number
+                return self.async_create_entry(
+                    title=f"VOEBB …{user_input[CONF_USERNAME][-4:]}", data=user_input
+                )
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
 
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        """Handle a rejected password."""
+        return await self.async_step_reauth_confirm()
 
-class InvalidAuth(HomeAssistantError):
-    """Error to indicate there is invalid auth."""
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for the new password."""
+        errors: dict[str, str] = {}
+        reauth_entry = self._get_reauth_entry()
+        if user_input is not None:
+            errors = await _async_validate({**reauth_entry.data, **user_input})
+            if not errors:
+                return self.async_update_reload_and_abort(
+                    reauth_entry, data_updates=user_input
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=STEP_REAUTH_DATA_SCHEMA,
+            description_placeholders={CONF_USERNAME: reauth_entry.data[CONF_USERNAME]},
+            errors=errors,
+        )
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Change the credentials of an existing entry."""
+        errors: dict[str, str] = {}
+        reconfigure_entry = self._get_reconfigure_entry()
+        if user_input is not None:
+            # A different library card is a different account. Entries of the
+            # Selenium version have no unique_id, so compare the card number
+            if user_input[CONF_USERNAME] != reconfigure_entry.data[CONF_USERNAME]:
+                return self.async_abort(reason="wrong_account")
+
+            errors = await _async_validate(user_input)
+            if not errors:
+                return self.async_update_reload_and_abort(
+                    reconfigure_entry, data_updates=user_input
+                )
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=self.add_suggested_values_to_schema(
+                STEP_USER_DATA_SCHEMA,
+                {CONF_USERNAME: reconfigure_entry.data[CONF_USERNAME]},
+            ),
+            errors=errors,
+        )

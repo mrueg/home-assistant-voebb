@@ -1,237 +1,139 @@
-from dataclasses import dataclass
-from datetime import datetime, timedelta
+"""Sensors for the voebb integration."""
 
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.core import HomeAssistant
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from __future__ import annotations
 
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException
+from dataclasses import asdict
+from datetime import date
+from typing import Any
 
-import logging
-import time
-
-from .const import (
-    URL,
-    DEFAULT_ICON,
-    CONF_SELENIUM_HOST,
-    CONF_SELENIUM_PORT,
-    DOMAIN,  # noqa
-    SCAN_INTERVAL,  # noqa
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
 )
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-_LOGGER = logging.getLogger(__package__)
+from .coordinator import VoebbConfigEntry, VoebbCoordinator
+from .entity import VoebbEntity
 
-
-class FailedFetchingAusleihen(HomeAssistantError):
-    """Error to indicate there is an issue failed to fetch the Ausleihen page."""
-
-
-@dataclass
-class Item:
-    title: str
-    author: str
-    library: str
-    metadata: str
-    return_date: datetime
-    extension: str
-
-    @classmethod
-    def from_dict(cls, source):
-        timestamp = datetime.fromisoformat(source.get("return_date"))
-
-        return cls(
-            title=source["title"],
-            author=source["author"],
-            library=source["library"],
-            metadata=source["metadata"],
-            return_date=timestamp.strftime("%Y-%m-%d"),
-            extension=source["extension"],
-        )
-
-    def to_dict(self):
-        return {
-            "title": self.title,
-            "author": self.author,
-            "library": self.library,
-            "metadata": self.metadata,
-            "return_date": self.return_date,
-            "extension": self.extension,
-        }
-
-    def __hash__(self):
-        return hash(tuple(sorted(self.to_dict().items())))
-
-
-async def async_setup_platform(
-    hass: HomeAssistant,
-    config: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    _: DiscoveryInfoType | None = None,
-) -> None:
-    """Set up the sensor platform."""
-    async_add_entities([VOEBBSensor(hass)])
+# Coordinator handles the polling, entities only read its data
+PARALLEL_UPDATES = 0
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    config_entry: VoebbConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    async_add_entities([VOEBBSensor(hass, config_entry.data)])
+    coordinator = config_entry.runtime_data
+    async_add_entities(
+        [
+            VoebbBorrowedItemsSensor(coordinator),
+            VoebbNextReturnSensor(coordinator),
+            VoebbReadyForPickupSensor(coordinator),
+            VoebbCountSensor(coordinator, "reservations"),
+            VoebbCountSensor(coordinator, "orders"),
+            VoebbCardValidUntilSensor(coordinator),
+        ]
+    )
 
 
-class VOEBBSensor(SensorEntity):
-    def __init__(self, hass: HomeAssistant, config: dict) -> None:
-        self.hass: HomeAssistant = hass
-        self.config: dict = config
-        self.username: str = config.get(CONF_USERNAME)
-        self.password: str = config.get(CONF_PASSWORD)
-        self.selenium_host: str = config.get(CONF_SELENIUM_HOST)
-        self.selenium_port: str = config.get(CONF_SELENIUM_PORT)
-        self.items: list[Item] = []
-        self._last_updated: datetime
+class VoebbBorrowedItemsSensor(VoebbEntity, SensorEntity):
+    """Number of borrowed items, with all items as attribute."""
 
-    @property
-    def name(self) -> str:
-        return f"VOEBB: {self.username}"
+    _attr_translation_key = "borrowed_items"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    # The item list can be large, keep it out of the recorder database
+    _unrecorded_attributes = frozenset({"items"})
 
-    @property
-    def unique_id(self) -> str:
-        return f"voebb_{self.username}"
-
-    @property
-    def state(self) -> str:
-        _LOGGER.debug(f"{DOMAIN} - state() called")
-        next_item = self.next_item()
-        if next_item:
-            return f"Next item to return: {next_item.title} at {next_item.return_date}"
-        return "N/A"
+    def __init__(self, coordinator: VoebbCoordinator) -> None:
+        super().__init__(coordinator, "borrowed_items")
 
     @property
-    def extra_state_attributes(self):
-        return {"items": [item.to_dict() for item in self.items or []]}
+    def native_value(self) -> int:
+        return len(self.coordinator.data.items)
 
     @property
-    def icon(self) -> str:
-        return DEFAULT_ICON
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {"items": [asdict(item) for item in self.coordinator.data.items]}
 
-    def update(self) -> None:
-        _LOGGER.debug(f"{DOMAIN} - update() called")
-        # We don't want to hammer the website if we have items and updated once
-        if (
-            self.items
-            and self._last_updated
-            and (datetime.now() - self._last_updated) < timedelta(hours=6)
-        ):
-            _LOGGER.debug(
-                f"Last update was on {self._last_updated} - skipping for 6 hours"
-            )
-        else:
-            self.items = self.fetch_items()
-            self._last_updated = datetime.now()
 
-    def fetch_items(self) -> list[Item]:
-        _LOGGER.debug(f"{DOMAIN} - fetch_items() called")
-        items = []
+class VoebbNextReturnSensor(VoebbEntity, SensorEntity):
+    """Date the next borrowed item is due."""
 
-        options = webdriver.ChromeOptions()
-        options.add_argument("--window-size=1920,1080")
-        url = f"http://{self.selenium_host}:{self.selenium_port}/wd/hub"
-        _LOGGER.debug(f"{DOMAIN} - fetch_items: Connecting to {url}")
+    _attr_translation_key = "next_return_date"
+    _attr_device_class = SensorDeviceClass.DATE
 
-        driver = webdriver.Remote(command_executor=url, options=options)
-        driver.get(URL)
-        driver.implicitly_wait(2)
-        login_button = driver.find_element(by=By.NAME, value="SUO1_AUTHFU_1")
-        login_button.click()
+    def __init__(self, coordinator: VoebbCoordinator) -> None:
+        super().__init__(coordinator, "next_return_date")
 
-        _LOGGER.debug(f"{DOMAIN} - fetch_items: Navigating to login page")
-
-        username_box = driver.find_element(by=By.ID, value="L#AUSW")
-        username_box.send_keys(self.username)
-        password_box = driver.find_element(by=By.ID, value="LPASSW")
-        password_box.send_keys(self.password)
-        login_button = driver.find_element(by=By.NAME, value="LLOGIN")
-        login_button.click()
-
-        try:
-            login_button = driver.find_element(by=By.NAME, value="SUO1_AUTHFU_1")
-        except NoSuchElementException:
-            _LOGGER.debug(f"{DOMAIN} - fetch_items: Auth failed")
-            driver.quit()
-            raise InvalidAuth
-
-        _LOGGER.debug(f"{DOMAIN} - fetch_items: Auth succeeded")
-        account_link = driver.find_element(
-            by=By.XPATH, value="//a[@title='Mein Konto']"
+    @property
+    def native_value(self) -> date | None:
+        # Items are sorted by return date
+        return (
+            self.coordinator.data.items[0].return_date
+            if self.coordinator.data.items
+            else None
         )
-        account_link.click()
 
-        try:
-            borrow_link = driver.find_element(by=By.PARTIAL_LINK_TEXT, value="Keine Ausleihen")
-            driver.quit()
-            return []
-        except NoSuchElementException:
-            try:
-                borrow_link = driver.find_element(by=By.PARTIAL_LINK_TEXT, value="Ausleihen")
-            except NoSuchElementException:
-                _LOGGER.debug(f"{DOMAIN} - fetch_items: Fetching Ausleihen failed")
-                driver.quit()
-                raise FailedFetchingAusleihen
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        due = self.native_value
+        return {
+            "titles": [
+                item.title
+                for item in self.coordinator.data.items
+                if item.return_date == due
+            ]
+            if due
+            else []
+        }
 
-        borrow_link.click()
-        _LOGGER.debug(f"{DOMAIN} - fetch_items: Selected Ausleihen")
 
-        rows = len(driver.find_elements(By.XPATH, '//*[@id="resptable-1"]/tbody/tr'))
+class VoebbReadyForPickupSensor(VoebbEntity, SensorEntity):
+    """Number of reserved items waiting for pickup, with the pickup code."""
 
-        _LOGGER.debug(f"{DOMAIN} - fetch_items: {rows} items fetched")
+    _attr_translation_key = "ready_for_pickup"
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
-        for r in range(1, rows + 1):
-            title = driver.find_element(
-                by=By.XPATH, value=f'//*[@id="resptable-1"]/tbody/tr[{r}]/td[4]'
-            ).text
+    def __init__(self, coordinator: VoebbCoordinator) -> None:
+        super().__init__(coordinator, "ready_for_pickup")
 
-            metadata = ""
-            author = ""
-            if " / " in title:
-                title, author = title.split(" / ", 1)
-                if "\n" in author:
-                    author, metadata = author.split("\n", 1)
-            else:
-                if "\n" in title:
-                    title, metadata = title.split("\n", 1)
+    @property
+    def native_value(self) -> int | None:
+        return self.coordinator.data.ready_for_pickup
 
-            _LOGGER.debug(
-                f"{DOMAIN} - fetch_items: {title} # {author} # {metadata} fetched"
-            )
-            items.append(
-                Item(
-                    return_date=driver.find_element(
-                        by=By.XPATH, value=f'//*[@id="resptable-1"]/tbody/tr[{r}]/td[2]'
-                    ).text,
-                    library=driver.find_element(
-                        by=By.XPATH, value=f'//*[@id="resptable-1"]/tbody/tr[{r}]/td[3]'
-                    ).text,
-                    title=title,
-                    author=author,
-                    metadata=metadata,
-                    extension=driver.find_element(
-                        by=By.XPATH, value=f'//*[@id="resptable-1"]/tbody/tr[{r}]/td[5]'
-                    ).text,
-                )
-            )
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {"pickup_code": self.coordinator.data.pickup_code}
 
-        driver.quit()
-        return items
 
-    def next_item(self):
-        _LOGGER.debug(f"{DOMAIN} - next_item() called")
-        if self.items and isinstance(self.items, list) and len(self.items) > 0:
-            return self.items[0]
-        return None
+class VoebbCountSensor(VoebbEntity, SensorEntity):
+    """A count of the account overview, e.g. the reservations."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator: VoebbCoordinator, key: str) -> None:
+        super().__init__(coordinator, key)
+        self._key = key
+        self._attr_translation_key = key
+
+    @property
+    def native_value(self) -> int | None:
+        value: int | None = getattr(self.coordinator.data, self._key)
+        return value
+
+
+class VoebbCardValidUntilSensor(VoebbEntity, SensorEntity):
+    """Date the library card expires."""
+
+    _attr_translation_key = "card_valid_until"
+    _attr_device_class = SensorDeviceClass.DATE
+
+    def __init__(self, coordinator: VoebbCoordinator) -> None:
+        super().__init__(coordinator, "card_valid_until")
+
+    @property
+    def native_value(self) -> date | None:
+        return self.coordinator.data.card_valid_until

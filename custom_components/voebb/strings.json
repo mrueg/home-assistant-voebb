@@ -3,18 +3,123 @@
         "step": {
             "user": {
                 "data": {
-                    "host": "[%key:common::config_flow::data::host%]",
                     "username": "[%key:common::config_flow::data::username%]",
-                    "password": "[%key:common::config_flow::data::password%]",
+                    "password": "[%key:common::config_flow::data::password%]"
+                },
+                "data_description": {
+                    "username": "The number on your library card.",
+                    "password": "The password you use to log in at voebb.de."
+                }
+            },
+            "reauth_confirm": {
+                "title": "[%key:common::config_flow::title::reauth%]",
+                "description": "The password for library card {username} was rejected. Please enter the current password.",
+                "data": {
+                    "password": "[%key:common::config_flow::data::password%]"
+                },
+                "data_description": {
+                    "password": "The password you use to log in at voebb.de."
+                }
+            },
+            "reconfigure": {
+                "description": "Change the password of your library card. To use a different library card, add the integration again.",
+                "data": {
+                    "username": "[%key:common::config_flow::data::username%]",
+                    "password": "[%key:common::config_flow::data::password%]"
+                },
+                "data_description": {
+                    "username": "The number on your library card.",
+                    "password": "The password you use to log in at voebb.de."
                 }
             }
         },
         "error": {
+            "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
             "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
-            "unknown": "[%key:common::config_flow::error::unknown%]",
+            "unknown": "[%key:common::config_flow::error::unknown%]"
         },
         "abort": {
-            "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+            "already_configured": "[%key:common::config_flow::abort::already_configured_account%]",
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+            "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]",
+            "wrong_account": "This is a different library card. Add it as a new integration instead."
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "overdue": {
+                "name": "Overdue"
+            }
         },
+        "calendar": {
+            "return_dates": {
+                "name": "Return dates"
+            }
+        },
+        "sensor": {
+            "borrowed_items": {
+                "name": "Borrowed items"
+            },
+            "next_return_date": {
+                "name": "Next return date"
+            },
+            "ready_for_pickup": {
+                "name": "Ready for pickup",
+                "state_attributes": {
+                    "pickup_code": {
+                        "name": "Pickup code"
+                    }
+                }
+            },
+            "card_valid_until": {
+                "name": "Library card valid until"
+            },
+            "reservations": {
+                "name": "Reservations"
+            },
+            "orders": {
+                "name": "Orders from the stacks"
+            }
+        }
+    },
+    "exceptions": {
+        "invalid_auth": {
+            "message": "VOEBB rejected the login: {error}"
+        },
+        "update_failed": {
+            "message": "Fetching the borrowed items from VOEBB failed: {error}"
+        },
+        "entry_not_found": {
+            "message": "The library card was not found."
+        },
+        "entry_not_loaded": {
+            "message": "The library card is not loaded."
+        },
+        "unknown_item": {
+            "message": "These items are not borrowed: {barcodes}"
+        },
+        "renew_failed": {
+            "message": "Renewing at VOEBB failed: {error}"
+        }
+    },
+    "services": {
+        "renew": {
+            "name": "Renew",
+            "description": "Renews borrowed items. Returns for each item whether it was renewed and the note of VOEBB.",
+            "fields": {
+                "config_entry_id": {
+                    "name": "Library card",
+                    "description": "The library card whose items are renewed."
+                },
+                "barcodes": {
+                    "name": "Barcodes",
+                    "description": "Barcodes of the items to renew, see the items attribute of the borrowed items sensor. Leave empty to renew all items."
+                },
+                "check_only": {
+                    "name": "Check only",
+                    "description": "Only check whether the items can be renewed, without renewing them."
+                }
+            }
+        }
     }
 }
