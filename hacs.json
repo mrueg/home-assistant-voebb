@@ -1,5 +1,6 @@
 {
   "name": "VOEBB (Verbund der Öffentlichen Bibliotheken Berlins)",
   "hide_default_branch": false,
-  "render_readme": true
+  "render_readme": true,
+  "homeassistant": "2025.3.0"
 }

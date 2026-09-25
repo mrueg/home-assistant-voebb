@@ -1,0 +1,6 @@
+aioresponses
+beautifulsoup4
+mypy
+pytest-cov
+pytest-homeassistant-custom-component
+ruff

@@ -1,0 +1,39 @@
+{
+    "entity": {
+        "binary_sensor": {
+            "overdue": {
+                "default": "mdi:book-clock"
+            }
+        },
+        "calendar": {
+            "return_dates": {
+                "default": "mdi:calendar-clock"
+            }
+        },
+        "sensor": {
+            "borrowed_items": {
+                "default": "mdi:library"
+            },
+            "next_return_date": {
+                "default": "mdi:book-arrow-left"
+            },
+            "ready_for_pickup": {
+                "default": "mdi:bookshelf"
+            },
+            "card_valid_until": {
+                "default": "mdi:card-account-details"
+            },
+            "reservations": {
+                "default": "mdi:bookmark-multiple"
+            },
+            "orders": {
+                "default": "mdi:warehouse"
+            }
+        }
+    },
+    "services": {
+        "renew": {
+            "service": "mdi:book-refresh"
+        }
+    }
+}
